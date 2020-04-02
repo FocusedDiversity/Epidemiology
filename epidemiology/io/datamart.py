@@ -1,4 +1,4 @@
-import io, os
+import io, os, shutil, errno
 import pandas as pd
 import numpy as np
 from epidemiology.config import env_config as ENVCFG
@@ -11,9 +11,19 @@ def prepDir(dirpath):
     pass
 
 
+def deleteDir(path):
+  try:
+    shutil.rmtree(path)
+  except OSError as exc:  # Python >2.5
+    if exc.errno == errno.ENOENT:
+      pass
+    else:
+      raise
+
+
 class DATAMART:
   @classmethod
-  def setup(cls):
+  def setup(cls, clean=True):
     '''
     Setup data folders for all countries in the dataset
     :return: None
@@ -24,10 +34,11 @@ class DATAMART:
                            'bash data_sync.sh'
                            ]))
 
+    if clean:
+      deleteDir(os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq'))
     # retrieve list of countries from on of the data files
     filepath = os.path.join(
-      ENVCFG.FILESYSTEM.DATA_ROOT,
-      'COVID-19', 'csse_covid_19_data', 'csse_covid_19_time_series', 'time_series_19-covid-Confirmed.csv'
+      ENVCFG.FILESYSTEM.TIMESERIES_ROOTPATH, 'time_series_covid19_confirmed_global.csv'
     )
     dataDf = pd.read_csv(filepath, sep=',', header=0)
     countries = dataDf['Country/Region'].unique()
@@ -104,6 +115,7 @@ class COVID_19_CountryExtractor:
       if 'state' in subregionsToExtract:
         countryStatesDf.to_csv(os.path.join(self.countryDataRoot, 'state', 'time_series_' + self.datapoint + '.csv'))
       nationalTimeSeries = countryStatesDf.sum().to_frame().T
+
     nationalTimeSeries.to_csv(os.path.join(self.countryDataRoot, 'national', 'time_series_' + self.datapoint + '.csv'))
     return nationalTimeSeries.iloc[0].tolist()
 
@@ -113,36 +125,32 @@ class COVID_19_WORLD:
   Covid-19 Class for processing data at world granularity
   '''
 
-  # path where time series data resides
-  ROOTPATH = os.path.join(
-    ENVCFG.FILESYSTEM.DATA_ROOT,
-    'COVID-19', 'csse_covid_19_data', 'csse_covid_19_time_series'
-  )
-
   def __init__(self):
     '''
     Setup globals at the instance level
     '''
-    self.ROOTPATH = self.__class__.ROOTPATH
-    self.DATAFILES = ['time_series_19-covid-Confirmed.csv', 'time_series_19-covid-Deaths.csv',
-                      'time_series_19-covid-Recovered.csv']
+    self.DATAFILES = ['time_series_covid19_confirmed_global.csv', 'time_series_covid19_deaths_global.csv']
+    # 'time_series_covid19_testing_global.csv' not available yet
 
-  def extract(self):
+  def extract(self, dataSync):
     '''
     Extracts all time series and collates it by country as well as at the aggregated world-level
     :return: None
     '''
 
     # run DATAMART setup to ensure most recent data is synced
-    DATAMART.setup()
+    if dataSync: DATAMART.setup()
 
     # process each timeseries data file at all granularities
     for datafile in self.DATAFILES:
-      datapoint = datafile.split('.')[0].split('-')[-1]
-      filepath = os.path.join(self.ROOTPATH, datafile)
+      datapoint = datafile.split('.')[0].split('_')[3]
+      filepath = os.path.join(ENVCFG.FILESYSTEM.TIMESERIES_ROOTPATH, datafile)
       dataDf = pd.read_csv(filepath, sep=',', header=0)
 
       dataDf.drop(['Lat', 'Long'], axis=1, inplace=True)
+      dataDf['Province/State'].fillna('', inplace=True)
+      dataDf.fillna(value=0, inplace=True)
+
       countries = dataDf['Country/Region'].unique()
       byCountryDf = pd.DataFrame(columns=countries, index=dataDf.columns[2:])
       byCountryDf.fillna(0, inplace=True)
