@@ -69,6 +69,38 @@ class COVID_19_CountryExtractor:
     # root path where country level processed data is stored
     self.countryDataRoot = os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', self.country)
 
+  @staticmethod
+  def extractByState_fromCountryFiles(country):
+    '''
+    Extracts and processes timeseries data per state of the country specified in the data
+    :return: pandas.DataFrame
+    '''
+    for datapoint in ['confirmed', 'deaths']:
+      datafile = '_'.join(['time_series_covid19', datapoint, country]) + '.csv'
+      filepath = os.path.join(ENVCFG.FILESYSTEM.TIMESERIES_ROOTPATH, datafile)
+      dataDf = pd.read_csv(filepath, sep=',', header=0)
+      dataDf.drop(['Country_Region', 'Lat', 'Long_'], axis=1, inplace=True)
+
+      statesDf = dataDf.groupby(['Province_State']).sum()
+      savepath = os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', country, 'state', 'time_series_' + datapoint + '.csv')
+      statesDf.to_csv(savepath)
+
+  @staticmethod
+  def extractByCounty_fromCountryFiles(country):
+    '''
+    Extracts and processes timeseries data per country of the country specified in the data
+    :return: pandas.DataFrame
+    '''
+
+    for datapoint in ['confirmed', 'deaths']:
+      datafile = '_'.join(['time_series_covid19', datapoint, country]) + '.csv'
+      filepath = os.path.join(ENVCFG.FILESYSTEM.TIMESERIES_ROOTPATH, datafile)
+      countyDf = pd.read_csv(filepath, sep=',', header=0)
+      countyDf.drop(['Country_Region', 'Lat', 'Long_'], axis=1, inplace=True)
+      countyDf.set_index('Admin2', inplace=True)
+      savepath = os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', country, 'county', 'time_series_' + datapoint + '.csv')
+      countyDf.to_csv(savepath)
+
   def extractByState(self):
     '''
     Extracts and processes timeseries data per state of the country specified in the data
@@ -105,7 +137,7 @@ class COVID_19_CountryExtractor:
       self.countryDf[2:].to_csv(
         os.path.join(self.countryDataRoot, 'national', 'time_series_' + self.datapoint + '.csv'))
       nationalTimeSeries = self.countryDf.drop(['Province/State', 'Country/Region'], axis=1)
-    else:  # state and/or county level data present
+    elif self.countryDf.shape[0] > 1:  # state and/or county level data present
       if 'county' in subregionsToExtract:
         countryCountyDf = self.extractByCounty()
         if countryCountyDf.shape[0] > 0:
@@ -166,6 +198,11 @@ class COVID_19_WORLD:
       byCountryDf.index.name = 'Country/Region'
       byCountryDf.to_csv(os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', 'WORLD', 'time_series_' + datapoint + '.csv'))
 
+    # separate calls for state and county data extraction based on new datafiles structure
+    for country in ['US']:
+      COVID_19_CountryExtractor.extractByState_fromCountryFiles(country)
+      COVID_19_CountryExtractor.extractByCounty_fromCountryFiles(country)
+
 
 if __name__ == '__main__':
-  COVID_19_WORLD().extract()
+  COVID_19_WORLD().extract(dataSync=False)
