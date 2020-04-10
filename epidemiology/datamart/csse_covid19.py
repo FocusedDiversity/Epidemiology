@@ -21,7 +21,7 @@ def deleteDir(path):
       raise
 
 
-class DATAMART:
+class CSSE_COVID19:
   @classmethod
   def setup(cls, clean=True):
     '''
@@ -50,7 +50,7 @@ class DATAMART:
     prepDir(os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', 'WORLD'))
 
 
-class COVID_19_CountryExtractor:
+class COVID19_Country:
   '''
     Covid-19 Class for processing data at country & state/province granularity
   '''
@@ -152,7 +152,7 @@ class COVID_19_CountryExtractor:
     return nationalTimeSeries.iloc[0].tolist()
 
 
-class COVID_19_WORLD:
+class COVID19_World:
   '''
   Covid-19 Class for processing data at world granularity
   '''
@@ -171,7 +171,7 @@ class COVID_19_WORLD:
     '''
 
     # run DATAMART setup to ensure most recent data is synced
-    if dataSync: DATAMART.setup()
+    if dataSync: CSSE_COVID19.setup()
 
     # process each timeseries data file at all granularities
     for datafile in self.DATAFILES:
@@ -190,7 +190,7 @@ class COVID_19_WORLD:
       for country in countries:
         countryDf = dataDf[dataDf['Country/Region'] == country]
 
-        countryDataExtractor = COVID_19_CountryExtractor(country, countryDf, datapoint)
+        countryDataExtractor = COVID19_Country(country, countryDf, datapoint)
         nationalTimeSeries = countryDataExtractor.extract()
         byCountryDf[country] = nationalTimeSeries
 
@@ -200,9 +200,9 @@ class COVID_19_WORLD:
 
     # separate calls for state and county data extraction based on new datafiles structure
     for country in ['US']:
-      COVID_19_CountryExtractor.extractByState_fromCountryFiles(country)
-      COVID_19_CountryExtractor.extractByCounty_fromCountryFiles(country)
+      COVID19_Country.extractByState_fromCountryFiles(country)
+      COVID19_Country.extractByCounty_fromCountryFiles(country)
 
 
 if __name__ == '__main__':
-  COVID_19_WORLD().extract(dataSync=False)
+  COVID19_World().extract(dataSync=True)
