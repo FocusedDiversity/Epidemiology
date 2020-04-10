@@ -1,5 +1,5 @@
 All configuration variables should be included in config files in the [config folder](../epidemiology/config). There are three config files for three environments namely:
-1. Production: `config/production.py`
+1. Production: `config/prod.py`
 1. Staging: `config/stage.py`
 1. Development: `config/dev.py`
 
