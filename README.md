@@ -12,3 +12,5 @@ Here are some notes to accustom contributors to the repository folder structure 
 1. [Datasets](docs/datasets.md)
 1. [Developing models](docs/models.md)
 1. [Jupyter Notebooks](docs/notebooks.md)
+
+Lastly, include any information regarding model specific setup parameters and/or configuration file elements in the corresponding model's `README.md`.
