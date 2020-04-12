@@ -16,7 +16,7 @@ All code related to extracting and/or restructuring a dataset resides in the `ep
 
 As a best practice, any new dataset included in the codebase should be accompanied, if needed, with:
 1. Data sync bash snippet in `data/data_sync.sh`
-1. Extraction/restructuring code in `datamart/csse_covid19/[dataset].py`
+1. Extraction/restructuring code in `datamart/[dataset].py`
 
 [Previous: Setup](./setup.md)\
 [Next: Developing Models](./models.md) \
