@@ -1,7 +1,7 @@
 import io, os, shutil, errno
 import pandas as pd
 import numpy as np
-from epidemiology.config import env_config as ENVCFG
+from epidem.config import package as PACKAGE_CFG, csse_covid19 as CSSE_CFG
 
 
 def prepDir(dirpath):
@@ -30,24 +30,24 @@ class CSSE_COVID19:
     '''
 
     # sync all datasets from their respective repos using data folder shell script
-    os.system(' && '.join(['cd ' + ENVCFG.FILESYSTEM.DATA_ROOT,
+    os.system(' && '.join(['cd ' + PACKAGE_CFG.FILESYSTEM.DATA_ROOT,
                            'bash data_sync.sh'
                            ]))
 
     if clean:
-      deleteDir(os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq'))
+      deleteDir(os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_EXTRACTPATH))
     # retrieve list of countries from on of the data files
     filepath = os.path.join(
-      ENVCFG.FILESYSTEM.TIMESERIES_ROOTPATH, 'time_series_covid19_confirmed_global.csv'
+      CSSE_CFG.FILESYSTEM.TIMESERIES_ROOTPATH, 'time_series_covid19_confirmed_global.csv'
     )
     dataDf = pd.read_csv(filepath, sep=',', header=0)
     countries = dataDf['Country/Region'].unique()
 
     # create data folders for all countries and for the aggregated world level data
     for country in countries:
-      prepDir(os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', country, 'national'))
+      prepDir(os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_EXTRACTPATH, country, 'national'))
 
-    prepDir(os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', 'WORLD'))
+    prepDir(os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_EXTRACTPATH, 'WORLD'))
 
 
 class COVID19_Country:
@@ -67,7 +67,7 @@ class COVID19_Country:
     self.datapoint = datapoint
 
     # root path where country level processed data is stored
-    self.countryDataRoot = os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', self.country)
+    self.countryDataRoot = os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_EXTRACTPATH, self.country)
 
   @staticmethod
   def extractByState_fromCountryFiles(country):
@@ -77,12 +77,13 @@ class COVID19_Country:
     '''
     for datapoint in ['confirmed', 'deaths']:
       datafile = '_'.join(['time_series_covid19', datapoint, country]) + '.csv'
-      filepath = os.path.join(ENVCFG.FILESYSTEM.TIMESERIES_ROOTPATH, datafile)
+      filepath = os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_ROOTPATH, datafile)
       dataDf = pd.read_csv(filepath, sep=',', header=0)
       dataDf.drop(['Country_Region', 'Lat', 'Long_'], axis=1, inplace=True)
 
       statesDf = dataDf.groupby(['Province_State']).sum()
-      savepath = os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', country, 'state', 'time_series_' + datapoint + '.csv')
+      savepath = os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_EXTRACTPATH, country, 'state',
+                              'time_series_' + datapoint + '.csv')
       statesDf.to_csv(savepath)
 
   @staticmethod
@@ -94,11 +95,12 @@ class COVID19_Country:
 
     for datapoint in ['confirmed', 'deaths']:
       datafile = '_'.join(['time_series_covid19', datapoint, country]) + '.csv'
-      filepath = os.path.join(ENVCFG.FILESYSTEM.TIMESERIES_ROOTPATH, datafile)
+      filepath = os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_ROOTPATH, datafile)
       countyDf = pd.read_csv(filepath, sep=',', header=0)
       countyDf.drop(['Country_Region', 'Lat', 'Long_'], axis=1, inplace=True)
       countyDf.set_index('Admin2', inplace=True)
-      savepath = os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', country, 'county', 'time_series_' + datapoint + '.csv')
+      savepath = os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_EXTRACTPATH, country, 'county',
+                              'time_series_' + datapoint + '.csv')
       countyDf.to_csv(savepath)
 
   def extractByState(self):
@@ -176,7 +178,7 @@ class COVID19_World:
     # process each timeseries data file at all granularities
     for datafile in self.DATAFILES:
       datapoint = datafile.split('.')[0].split('_')[3]
-      filepath = os.path.join(ENVCFG.FILESYSTEM.TIMESERIES_ROOTPATH, datafile)
+      filepath = os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_ROOTPATH, datafile)
       dataDf = pd.read_csv(filepath, sep=',', header=0)
 
       dataDf.drop(['Lat', 'Long'], axis=1, inplace=True)
@@ -196,7 +198,8 @@ class COVID19_World:
 
       byCountryDf = byCountryDf.T
       byCountryDf.index.name = 'Country/Region'
-      byCountryDf.to_csv(os.path.join(ENVCFG.FILESYSTEM.DATA_ROOT, 'kq', 'WORLD', 'time_series_' + datapoint + '.csv'))
+      byCountryDf.to_csv(
+        os.path.join(CSSE_CFG.FILESYSTEM.TIMESERIES_EXTRACTPATH, 'WORLD', 'time_series_' + datapoint + '.csv'))
 
     # separate calls for state and county data extraction based on new datafiles structure
     for country in ['US']:
