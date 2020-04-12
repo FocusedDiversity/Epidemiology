@@ -6,8 +6,8 @@ setup(
   packages=find_packages(),
   include_package_data=True,
   url='https://github.com/FocusedDiversity/Epidemiology',
-  license='Free for non-commercial use',  # TODO: possibles - MIT, GPL-3.0-only, LGPL-3.0
-  author='Synaptiq, Karotene, UMBC',
+  license='Free for non-commercial use',
+  author='Synaptiq, Karotene',
   author_email='peshave.ak@gmail.com',
   description='Epidemiology toolkit under-development',
   install_requires=[
